@@ -8,7 +8,7 @@ Una aplicación web moderna, elegante y responsive para llevar el seguimiento de
 
 1. **Búsqueda Automática de Libros (Google Books API)**:
    - Busca cualquier libro por título, autor o ISBN.
-   - Obtén automáticamente la **portada en alta resolución**, el **número total de páginas** y la **fecha/año de publicación**.
+   - Consulta Google Books, Open Library e Internet Archive para encontrar ediciones, portadas, ISBN y metadatos bibliográficos.
 
 2. **Registro Manual de Fechas y Progreso**:
    - Introduce manualmente la **fecha de inicio** y la **fecha de fin de lectura**.
@@ -81,5 +81,5 @@ La aplicación usa una instancia única de Supabase para todos los usuarios. El 
 - **Lucide Icons** (iconografía limpia y moderna)
 - **Recharts** (gráficos interactivos para el dashboard)
 - **Canvas Confetti** (celebración de metas anuales)
-- **Google Books API** (búsqueda y descarga de metadatos de libros)
+- **Google Books API**, **Open Library Search API** e **Internet Archive Advanced Search API**
 - **Supabase JS** (autenticación y base de datos PostgreSQL en la nube)

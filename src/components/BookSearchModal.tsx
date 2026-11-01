@@ -189,6 +189,7 @@ export const BookSearchModal: React.FC<BookSearchModalProps> = ({
                   {book.publisher && <span>{book.publisher}</span>}
                   {book.language && <span>Idioma: {book.language}</span>}
                   {book.source === 'Open Library' && <span>Datos de la obra: verifica la edición y las páginas</span>}
+                  {book.source === 'Internet Archive' && <span>Ejemplar digitalizado: las páginas pueden ser aproximadas</span>}
                   {book.page_count > 0 && (
                     <span><strong>{book.page_count}</strong> páginas</span>
                   )}
@@ -217,7 +218,7 @@ export const BookSearchModal: React.FC<BookSearchModalProps> = ({
         <div className="p-4 bg-stone-50 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
           <span className="flex items-center gap-1.5">
             <Database className="w-3.5 h-3.5 text-stone-400" />
-            Búsqueda dual: Google Books + Open Library
+            Búsqueda ampliada: Google Books + Open Library + Internet Archive
           </span>
           <button
             type="button"
