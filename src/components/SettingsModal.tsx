@@ -174,7 +174,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </h3>
             </div>
             <p className="text-xs text-stone-500 leading-relaxed">
-              El buscador consulta Google Books, Open Library e Internet Archive en paralelo. La clave opcional de Google Books puede aumentar los límites de consulta.
+              El buscador consulta Google Books, Open Library e Internet Archive en paralelo. Google Books realiza una búsqueda general y otra por título; una clave API opcional puede aumentar los límites de consulta.
             </p>
             <input
               type="password"

@@ -101,9 +101,14 @@ function mapGoogleItem(item: GoogleBookItem): BookSearchResult {
 export async function searchGoogleBooks(query: string): Promise<BookSearchResult[]> {
   const searches = isbnQuery(query)
     ? [`isbn:${cleanIsbn(query)}`]
-    : [query.trim(), `intitle:${query.trim()}`, `inauthor:${query.trim()}`];
-  const requests = await Promise.allSettled(searches.flatMap(search => [0, 40].map(start => searchGoogleQuery(search, start))));
-  if (requests.every(result => result.status === 'rejected')) throw new Error('Google Books no disponible');
+    : [query.trim(), `intitle:${query.trim()}`];
+  // Avoid six simultaneous Google requests per keystroke/search. Broad queries
+  // can return 40 items; exact-title lookup is a second targeted request.
+  const requests = await Promise.allSettled(searches.map(search => searchGoogleQuery(search, 0)));
+  if (requests.every(result => result.status === 'rejected')) {
+    const failure = requests.find(result => result.status === 'rejected');
+    throw new Error(`Google Books: ${failure?.status === 'rejected' ? failure.reason?.message || 'sin respuesta' : 'no disponible'}`);
+  }
   return requests.flatMap(result => result.status === 'fulfilled' ? result.value.map(mapGoogleItem) : []);
 }
 
@@ -169,13 +174,16 @@ function mergeResults(groups: BookSearchResult[][], query: string) {
   }).sort((a, b) => b.score - a.score || a.index - b.index).map(({ book }) => book);
 }
 
-export async function searchBooks(query: string): Promise<{ results: BookSearchResult[]; provider: string }> {
-  if (!query.trim()) return { results: [], provider: 'none' };
+export async function searchBooks(query: string): Promise<{ results: BookSearchResult[]; provider: string; unavailable: string[] }> {
+  if (!query.trim()) return { results: [], provider: 'none', unavailable: [] };
   const sources = await Promise.allSettled([searchGoogleBooks(query), searchOpenLibrary(query), searchInternetArchive(query)]);
   const names = ['Google Books', 'Open Library', 'Internet Archive'];
   const groups = sources.map(result => result.status === 'fulfilled' ? result.value : []);
   sources.forEach((result, index) => { if (result.status === 'rejected') console.warn(`${names[index]} no disponible:`, result.reason); });
   if (sources.every(result => result.status === 'rejected')) throw new Error('No se pudo conectar con los catálogos. Revisa tu conexión e inténtalo de nuevo.');
   const available = sources.flatMap((result, index) => result.status === 'fulfilled' ? [names[index]] : []);
-  return { results: mergeResults(groups, query), provider: available.join(' + ') || 'Sin resultados' };
+  const unavailable = sources.flatMap((result, index) => result.status === 'rejected'
+    ? [`${names[index]}: ${result.reason?.message || 'no disponible'}`]
+    : []);
+  return { results: mergeResults(groups, query), provider: available.join(' + ') || 'Sin resultados', unavailable };
 }

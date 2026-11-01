@@ -18,6 +18,7 @@ export const BookSearchModal: React.FC<BookSearchModalProps> = ({
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<BookSearchResult[]>([]);
   const [provider, setProvider] = useState<string>('');
+  const [unavailable, setUnavailable] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -36,6 +37,7 @@ export const BookSearchModal: React.FC<BookSearchModalProps> = ({
       const data = await searchBooks(query);
       setResults(data.results);
       setProvider(data.provider);
+      setUnavailable(data.unavailable);
     } catch (err: any) {
       console.error(err);
       setError('No se pudo conectar con la base de datos de libros. Revisa tu conexión a internet.');
@@ -53,6 +55,7 @@ export const BookSearchModal: React.FC<BookSearchModalProps> = ({
       .then((data) => {
         setResults(data.results);
         setProvider(data.provider);
+        setUnavailable(data.unavailable);
       })
       .catch(() => setError('Error buscando sugerencia.'))
       .finally(() => setIsLoading(false));
@@ -146,6 +149,14 @@ export const BookSearchModal: React.FC<BookSearchModalProps> = ({
             </div>
           )}
 
+          {!isLoading && hasSearched && unavailable.length > 0 && !error && (
+            <div className="my-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+              <p className="font-semibold">Algunas fuentes no respondieron:</p>
+              <ul className="mt-1 list-disc pl-4">{unavailable.map((item) => <li key={item}>{item}</li>)}</ul>
+              <p className="mt-1">Los catálogos abiertos pueden no incluir novedades editoriales recientes.</p>
+            </div>
+          )}
+
           {!isLoading && hasSearched && results.length === 0 && !error && (
             <div className="py-12 text-center text-stone-500">
               <BookOpen className="w-10 h-10 mx-auto text-stone-300 mb-2" />
@@ -218,7 +229,7 @@ export const BookSearchModal: React.FC<BookSearchModalProps> = ({
         <div className="p-4 bg-stone-50 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
           <span className="flex items-center gap-1.5">
             <Database className="w-3.5 h-3.5 text-stone-400" />
-            Búsqueda ampliada: Google Books + Open Library + Internet Archive
+            Búsqueda: Google Books + Open Library + Internet Archive
           </span>
           <button
             type="button"
