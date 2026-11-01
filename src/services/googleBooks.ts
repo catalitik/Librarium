@@ -99,11 +99,11 @@ function mapGoogleItem(item: GoogleBookItem): BookSearchResult {
 }
 
 export async function searchGoogleBooks(query: string): Promise<BookSearchResult[]> {
+  const words = query.trim().split(/\s+/).filter(Boolean);
   const searches = isbnQuery(query)
     ? [`isbn:${cleanIsbn(query)}`]
-    : [query.trim(), `intitle:${query.trim()}`];
-  // Avoid six simultaneous Google requests per keystroke/search. Broad queries
-  // can return 40 items; exact-title lookup is a second targeted request.
+    : [query.trim(), words.length <= 3 ? `inauthor:${query.trim()}` : `intitle:${query.trim()}`];
+  // Keep requests low while choosing the targeted search that fits the query.
   const requests = await Promise.allSettled(searches.map(search => searchGoogleQuery(search, 0)));
   if (requests.every(result => result.status === 'rejected')) {
     const failure = requests.find(result => result.status === 'rejected');
@@ -141,10 +141,11 @@ export async function searchInternetArchive(query: string): Promise<BookSearchRe
 }
 
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const wordsForSearch = (value: string): string[] => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().match(/[a-z0-9]+/g) || [];
 const normalizeIsbn = (value: string) => value.replace(/[^0-9X]/gi, '').toUpperCase();
 function mergeResults(groups: BookSearchResult[][], query: string) {
   const byIdentity = new Map<string, BookSearchResult>();
-  const queryTerms = normalize(query).match(/[a-z0-9]{2,}/g) || [];
+  const queryTerms = wordsForSearch(query).filter(term => term.length > 1);
   for (const book of groups.flat()) {
     if (!book.title || book.title === 'Título desconocido') continue;
     const isbn = normalizeIsbn(book.isbn || '');
@@ -166,12 +167,20 @@ function mergeResults(groups: BookSearchResult[][], query: string) {
     });
   }
   return [...byIdentity.values()].map((book, index) => {
-    const title = normalize(book.title);
-    const authors = normalize(book.authors.join(' '));
-    const score = queryTerms.reduce((sum, term) => sum + (title.includes(term) ? 4 : authors.includes(term) ? 2 : 0), 0)
+    const titleTerms = wordsForSearch(book.title);
+    const authorTerms = wordsForSearch(book.authors.join(' '));
+    const matchedTerms = isbnQuery(query)
+      ? (normalizeIsbn(book.isbn || '') === normalizeIsbn(query) ? queryTerms : [])
+      : queryTerms.filter(term => titleTerms.includes(term) || authorTerms.includes(term));
+    const score = matchedTerms.reduce((sum, term) => sum + (titleTerms.includes(term) ? 4 : authorTerms.includes(term) ? 2 : 0), 0)
       + (book.cover_url ? 1 : 0) + (book.isbn ? 1 : 0) + (book.page_count ? 0.5 : 0);
-    return { book, index, score };
-  }).sort((a, b) => b.score - a.score || a.index - b.index).map(({ book }) => book);
+    const coverage = queryTerms.length ? matchedTerms.length / queryTerms.length : 0;
+    return { book, index, score, coverage, matches: matchedTerms.length };
+  }).filter(item => isbnQuery(query)
+    ? item.coverage === 1
+    : item.coverage >= 0.5 && (queryTerms.length < 3 || item.matches >= 2))
+    .sort((a, b) => b.coverage - a.coverage || b.score - a.score || a.index - b.index)
+    .map(({ book }) => book);
 }
 
 export async function searchBooks(query: string): Promise<{ results: BookSearchResult[]; provider: string; unavailable: string[] }> {
